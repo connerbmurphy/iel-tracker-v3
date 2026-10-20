@@ -10,7 +10,12 @@ export default function HistoryScreen({ onNav }) {
           rates, equipment, trucks, trailers, stockItems, employees } = app;
 
   const completed = jobs.filter(j => j.status === 'complete')
-    .sort((a,b) => (b.completedAt||'').localeCompare(a.completedAt||''));
+    .sort((a,b) => {
+      const aHas = !!a.completedAt, bHas = !!b.completedAt;
+      if (aHas && !bHas) return -1;
+      if (!aHas && bHas) return 1;
+      return (b.completedAt||'').localeCompare(a.completedAt||'');
+    });
 
   // Group by year
   const byYear = {};

@@ -10,6 +10,8 @@ export default function SettingsScreen() {
   const [tab, setTab] = useState('jobs');
   const [toast, showToast] = useToast();
   const [newJobName, setNewJobName] = useState('');
+  const [expandedJobs, setExpandedJobs] = useState({});
+  const toggleJob = (id) => setExpandedJobs(prev => ({ ...prev, [id]: !prev[id] }));
 
   const save = (fn) => { fn(); showToast('Saved'); };
 
@@ -44,25 +46,46 @@ export default function SettingsScreen() {
 
       {tab === 'jobs' && (
         <>
-          {jobs.map(job => (
-            <Card key={job.id}>
-              <input style={S.textInputBig} value={job.name} onChange={e=>updJob(job.id,{name:e.target.value})} />
-              <div style={S.settingsGrid}>
-                <div><div style={S.hourLabel}>Bid total ($)</div><NumberInput value={job.bidTotal} onChange={v=>updJob(job.id,{bidTotal:v})} suffix="$" /></div>
-                <div><div style={S.hourLabel}>Target margin (%)</div><NumberInput value={job.targetMargin} onChange={v=>updJob(job.id,{targetMargin:v})} suffix="%" /></div>
-                <div><div style={S.hourLabel}>Target labor hrs</div><NumberInput value={job.bidLaborHours} onChange={v=>updJob(job.id,{bidLaborHours:v})} suffix="hrs" /></div>
-                <div><div style={S.hourLabel}>Status</div><select style={{ ...S.select, flex:'unset', width:'100%' }} value={job.status} onChange={e=>{ const s=e.target.value; updJob(job.id,{status:s,...(s==='complete'&&!job.completedAt?{completedAt:new Date().toISOString()}:{})}); }}><option value="active">Active</option><option value="complete">Complete</option></select></div>
-                <div style={{ gridColumn:'span 2' }}><div style={S.hourLabel}>Notes</div><input style={{ ...S.textInput, flex:'unset', width:'100%' }} value={job.notes||''} onChange={e=>updJob(job.id,{notes:e.target.value})} placeholder="Start date, gate code, client notes..." /></div>
-              </div>
-            </Card>
-          ))}
           <Card>
             <FieldLabel>Add a job</FieldLabel>
             <div style={{ display:'flex', gap:8 }}>
-              <input style={{ ...S.textInput, flex:2 }} placeholder="Client first and last name" value={newJobName} onChange={e=>setNewJobName(e.target.value)} />
+              <input style={{ ...S.textInput, flex:2 }} placeholder="Client first and last name" value={newJobName} onChange={e=>setNewJobName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addJob()} />
               <button style={S.btnPrimarySmall} onClick={addJob}>Add</button>
             </div>
           </Card>
+          {[...jobs].sort((a,b) => {
+            const aTime = a.createdAt || a.completedAt || '';
+            const bTime = b.createdAt || b.completedAt || '';
+            return bTime.localeCompare(aTime);
+          }).map(job => {
+            const isOpen = !!expandedJobs[job.id];
+            return (
+              <Card key={job.id} style={{ padding:0 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', cursor:'pointer' }}
+                  onClick={() => toggleJob(job.id)}>
+                  <div style={{ fontWeight:600, fontSize:14, color:C.ink }}>{job.name}</div>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ fontSize:11, color:C.inkFaint, background: job.status==='complete' ? '#e8f5ee' : '#f0ede6', padding:'2px 8px', borderRadius:20, fontWeight:600 }}>
+                      {job.status === 'complete' ? 'Complete' : 'Active'}
+                    </span>
+                    <span style={{ color:C.inkFaint, fontSize:16, lineHeight:1, transform: isOpen ? 'rotate(180deg)' : 'none', display:'inline-block', transition:'transform 0.15s' }}>▾</span>
+                  </div>
+                </div>
+                {isOpen && (
+                  <div style={{ padding:'0 16px 14px' }}>
+                    <input style={S.textInputBig} value={job.name} onChange={e=>updJob(job.id,{name:e.target.value})} />
+                    <div style={S.settingsGrid}>
+                      <div><div style={S.hourLabel}>Bid total ($)</div><NumberInput value={job.bidTotal} onChange={v=>updJob(job.id,{bidTotal:v})} suffix="$" /></div>
+                      <div><div style={S.hourLabel}>Target margin (%)</div><NumberInput value={job.targetMargin} onChange={v=>updJob(job.id,{targetMargin:v})} suffix="%" /></div>
+                      <div><div style={S.hourLabel}>Target labor hrs</div><NumberInput value={job.bidLaborHours} onChange={v=>updJob(job.id,{bidLaborHours:v})} suffix="hrs" /></div>
+                      <div><div style={S.hourLabel}>Status</div><select style={{ ...S.select, flex:'unset', width:'100%' }} value={job.status} onChange={e=>{ const s=e.target.value; updJob(job.id,{status:s,...(s==='complete'&&!job.completedAt?{completedAt:new Date().toISOString()}:{})}); }}><option value="active">Active</option><option value="complete">Complete</option></select></div>
+                      <div style={{ gridColumn:'span 2' }}><div style={S.hourLabel}>Notes</div><input style={{ ...S.textInput, flex:'unset', width:'100%' }} value={job.notes||''} onChange={e=>updJob(job.id,{notes:e.target.value})} placeholder="Start date, gate code, client notes..." /></div>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
         </>
       )}
 
