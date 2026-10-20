@@ -1,8 +1,23 @@
 import React, { useState } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { uid } from '../utils/helpers';
 import { Card, FieldLabel, NumberInput, S, C, SectionLabel, Hint, useToast, Toast } from '../components/UI';
+
+// Two-tap delete button: first tap arms, second tap fires, resets after 3s
+function DeleteButton({ label, onConfirm }) {
+  const [armed, setArmed] = useState(false);
+  const timer = React.useRef(null);
+  const arm = () => {
+    setArmed(true);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setArmed(false), 3000);
+  };
+  const fire = () => { clearTimeout(timer.current); setArmed(false); onConfirm(); };
+  return armed
+    ? <button style={{ width:'100%', padding:'10px 0', marginTop:12, background:'#b8502f', border:'none', borderRadius:8, color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer' }} onClick={fire}>Tap again to confirm delete</button>
+    : <button style={{ width:'100%', padding:'10px 0', marginTop:12, background:'transparent', border:`1px solid ${C.border}`, borderRadius:8, color:C.clay, fontWeight:600, fontSize:13, cursor:'pointer' }} onClick={arm}>Delete {label}</button>;
+}
 
 export default function SettingsScreen() {
   const app = useApp();
@@ -10,6 +25,8 @@ export default function SettingsScreen() {
   const [tab, setTab] = useState('jobs');
   const [toast, showToast] = useToast();
   const [newJobName, setNewJobName] = useState('');
+  const [unlockPin, setUnlockPin] = useState('');
+  const [pinMsg, setPinMsg] = useState('');
   const [expandedJobs, setExpandedJobs] = useState({});
   const toggleJob = (id) => setExpandedJobs(prev => ({ ...prev, [id]: !prev[id] }));
   const [expandedEquip, setExpandedEquip] = useState({});
@@ -22,6 +39,27 @@ export default function SettingsScreen() {
   const toggleStock = (id) => setExpandedStock(prev => ({ ...prev, [id]: !prev[id] }));
 
   const save = (fn) => { fn(); showToast('Saved'); };
+
+  // PIN gate: if a PIN is set and manager isn't unlocked, show unlock screen
+  if (!managerUnlocked && settings.managerPin) {
+    return (
+      <div style={S.screen}>
+        <Toast message={null} />
+        <div style={{ fontWeight:700, fontSize:19, marginBottom:4 }}>Settings</div>
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'40px 20px', gap:12 }}>
+          <div style={{ fontWeight:700, fontSize:16 }}>Manager PIN required</div>
+          <div style={{ fontSize:13, color:C.inkFaint, textAlign:'center' }}>Settings are locked to prevent accidental changes.</div>
+          <input type="password" inputMode="numeric" style={{ ...S.textInput, width:'100%', maxWidth:200, textAlign:'center', fontSize:24, letterSpacing:8, flex:'unset' }}
+            placeholder="PIN" value={unlockPin} onChange={e=>{ setUnlockPin(e.target.value); setPinMsg(''); }} onClick={e=>e.target.focus()} />
+          {pinMsg && <div style={{ color:C.clay, fontSize:13 }}>{pinMsg}</div>}
+          <button style={{ ...S.btnPrimary, flex:'unset', width:'100%', maxWidth:200 }}
+            onClick={() => { const ok = actions.unlockManager(unlockPin); if (!ok) { setPinMsg('Incorrect PIN'); setUnlockPin(''); } }}>
+            Unlock
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const addJob = () => {
     if (!newJobName.trim()) return;
@@ -95,6 +133,7 @@ export default function SettingsScreen() {
                       <div><div style={S.hourLabel}>Status</div><select style={{ ...S.select, flex:'unset', width:'100%' }} value={job.status} onChange={e=>{ const s=e.target.value; updJob(job.id,{status:s,...(s==='complete'&&!job.completedAt?{completedAt:new Date().toISOString()}:{})}); }}><option value="active">Active</option><option value="complete">Complete</option></select></div>
                       <div style={{ gridColumn:'span 2' }}><div style={S.hourLabel}>Notes</div><input style={{ ...S.textInput, flex:'unset', width:'100%' }} value={job.notes||''} onChange={e=>updJob(job.id,{notes:e.target.value})} placeholder="Start date, gate code, client notes..." /></div>
                     </div>
+                    <DeleteButton label={job.name} onConfirm={() => actions.deleteJob(job.id)} />
                   </div>
                 )}
               </Card>
@@ -113,10 +152,7 @@ export default function SettingsScreen() {
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', cursor:'pointer' }}
                   onClick={() => toggleEquip(eq.id)}>
                   <div style={{ fontWeight:600, fontSize:14, color:C.ink }}>{eq.name}</div>
-                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <button style={{ ...S.deleteBtnSmall, flexShrink:0 }} onClick={e=>{ e.stopPropagation(); actions.saveEquipment(equipment.filter(x=>x.id!==eq.id)); }}><X size={15}/></button>
-                    <span style={{ color:C.inkFaint, fontSize:16, lineHeight:1, transform: isOpen ? 'rotate(180deg)' : 'none', display:'inline-block', transition:'transform 0.15s' }}>▾</span>
-                  </div>
+                  <span style={{ color:C.inkFaint, fontSize:16, lineHeight:1, transform: isOpen ? 'rotate(180deg)' : 'none', display:'inline-block', transition:'transform 0.15s' }}>▾</span>
                 </div>
                 {isOpen && (
                   <div style={{ padding:'0 16px 14px' }}>
@@ -129,6 +165,7 @@ export default function SettingsScreen() {
                     </div>
                     <div style={S.hourLabel}>Hourly cost</div>
                     <NumberInput value={eq.hourlyCost} onChange={v=>updEquip(eq.id,{hourlyCost:Number(v)||0})} suffix="$/hr" />
+                    <DeleteButton label={eq.name} onConfirm={() => actions.saveEquipment(equipment.filter(x=>x.id!==eq.id))} />
                   </div>
                 )}
               </Card>
@@ -144,10 +181,7 @@ export default function SettingsScreen() {
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', cursor:'pointer' }}
                   onClick={() => toggleTrailer(tr.id)}>
                   <div style={{ fontWeight:600, fontSize:14, color:C.ink }}>{tr.name}</div>
-                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <button style={{ ...S.deleteBtnSmall, flexShrink:0 }} onClick={e=>{ e.stopPropagation(); actions.saveTrailers((trailers||[]).filter(x=>x.id!==tr.id)); }}><X size={15}/></button>
-                    <span style={{ color:C.inkFaint, fontSize:16, lineHeight:1, transform: isOpen ? 'rotate(180deg)' : 'none', display:'inline-block', transition:'transform 0.15s' }}>▾</span>
-                  </div>
+                  <span style={{ color:C.inkFaint, fontSize:16, lineHeight:1, transform: isOpen ? 'rotate(180deg)' : 'none', display:'inline-block', transition:'transform 0.15s' }}>▾</span>
                 </div>
                 {isOpen && (
                   <div style={{ padding:'0 16px 14px' }}>
@@ -160,6 +194,7 @@ export default function SettingsScreen() {
                     </div>
                     <div style={S.hourLabel}>Day rate (depreciation-based)</div>
                     <NumberInput value={tr.dayRate} onChange={v=>updTrailer(tr.id,{dayRate:Number(v)||0})} suffix="$/day" />
+                    <DeleteButton label={tr.name} onConfirm={() => actions.saveTrailers((trailers||[]).filter(x=>x.id!==tr.id))} />
                   </div>
                 )}
               </Card>
@@ -175,14 +210,12 @@ export default function SettingsScreen() {
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', cursor:'pointer' }}
                   onClick={() => toggleTruck(tr.id)}>
                   <div style={{ fontWeight:600, fontSize:14, color:C.ink }}>{tr.name}</div>
-                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <button style={{ ...S.deleteBtnSmall, flexShrink:0 }} onClick={e=>{ e.stopPropagation(); actions.saveTrucks(trucks.filter(x=>x.id!==tr.id)); }}><X size={15}/></button>
-                    <span style={{ color:C.inkFaint, fontSize:16, lineHeight:1, transform: isOpen ? 'rotate(180deg)' : 'none', display:'inline-block', transition:'transform 0.15s' }}>▾</span>
-                  </div>
+                  <span style={{ color:C.inkFaint, fontSize:16, lineHeight:1, transform: isOpen ? 'rotate(180deg)' : 'none', display:'inline-block', transition:'transform 0.15s' }}>▾</span>
                 </div>
                 {isOpen && (
                   <div style={{ padding:'0 16px 14px' }}>
                     <input style={{ ...S.textInputBig, flex:1 }} value={tr.name} onChange={e=>updTruck(tr.id,{name:e.target.value})} />
+                    <DeleteButton label={tr.name} onConfirm={() => actions.saveTrucks(trucks.filter(x=>x.id!==tr.id))} />
                   </div>
                 )}
               </Card>
@@ -209,7 +242,6 @@ export default function SettingsScreen() {
                   <div style={{ fontWeight:600, fontSize:14, color:C.ink }}>{item.name}</div>
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                     <span style={{ fontSize:11, color:C.inkFaint, fontWeight:600 }}>${item.avgUnitCost}/{item.unit}</span>
-                    <button style={{ ...S.deleteBtnSmall, flexShrink:0 }} onClick={e=>{ e.stopPropagation(); actions.saveStockItems(stockItems.filter(s=>s.id!==item.id)); }}><X size={15}/></button>
                     <span style={{ color:C.inkFaint, fontSize:16, lineHeight:1, transform: isOpen ? 'rotate(180deg)' : 'none', display:'inline-block', transition:'transform 0.15s' }}>▾</span>
                   </div>
                 </div>
@@ -226,6 +258,7 @@ export default function SettingsScreen() {
                       <div><div style={S.hourLabel}>Avg unit cost</div><NumberInput value={item.avgUnitCost} onChange={v=>updStock(item.id,{avgUnitCost:Number(v)||0})} suffix={`$/${item.unit}`} /></div>
                       <div><div style={S.hourLabel}>Unit</div><input style={{ ...S.textInput, flex:'unset', width:'100%' }} value={item.unit} onChange={e=>updStock(item.id,{unit:e.target.value})} /></div>
                     </div>
+                    <DeleteButton label={item.name} onConfirm={() => actions.saveStockItems(stockItems.filter(s=>s.id!==item.id))} />
                   </div>
                 )}
               </Card>
