@@ -12,6 +12,14 @@ export default function SettingsScreen() {
   const [newJobName, setNewJobName] = useState('');
   const [expandedJobs, setExpandedJobs] = useState({});
   const toggleJob = (id) => setExpandedJobs(prev => ({ ...prev, [id]: !prev[id] }));
+  const [expandedEquip, setExpandedEquip] = useState({});
+  const toggleEquip = (id) => setExpandedEquip(prev => ({ ...prev, [id]: !prev[id] }));
+  const [expandedTrailers, setExpandedTrailers] = useState({});
+  const toggleTrailer = (id) => setExpandedTrailers(prev => ({ ...prev, [id]: !prev[id] }));
+  const [expandedTrucks, setExpandedTrucks] = useState({});
+  const toggleTruck = (id) => setExpandedTrucks(prev => ({ ...prev, [id]: !prev[id] }));
+  const [expandedStock, setExpandedStock] = useState({});
+  const toggleStock = (id) => setExpandedStock(prev => ({ ...prev, [id]: !prev[id] }));
 
   const save = (fn) => { fn(); showToast('Saved'); };
 
@@ -98,49 +106,89 @@ export default function SettingsScreen() {
       {tab === 'equipment' && (
         <>
           <SectionLabel>EQUIPMENT</SectionLabel>
-          {equipment.map((eq,i) => (
-            <Card key={eq.id}>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-                  <button style={S.reorderBtn} onClick={()=>moveEquip(eq.id,-1)} disabled={i===0}>^</button>
-                  <button style={S.reorderBtn} onClick={()=>moveEquip(eq.id,1)} disabled={i===equipment.length-1}>v</button>
+          {equipment.map((eq,i) => {
+            const isOpen = !!expandedEquip[eq.id];
+            return (
+              <Card key={eq.id} style={{ padding:0 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', cursor:'pointer' }}
+                  onClick={() => toggleEquip(eq.id)}>
+                  <div style={{ fontWeight:600, fontSize:14, color:C.ink }}>{eq.name}</div>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <button style={{ ...S.deleteBtnSmall, flexShrink:0 }} onClick={e=>{ e.stopPropagation(); actions.saveEquipment(equipment.filter(x=>x.id!==eq.id)); }}><X size={15}/></button>
+                    <span style={{ color:C.inkFaint, fontSize:16, lineHeight:1, transform: isOpen ? 'rotate(180deg)' : 'none', display:'inline-block', transition:'transform 0.15s' }}>▾</span>
+                  </div>
                 </div>
-                <input style={{ ...S.textInputBig, flex:1, marginBottom:0 }} value={eq.name} onChange={e=>updEquip(eq.id,{name:e.target.value})} />
-                <button style={S.deleteBtnSmall} onClick={()=>actions.saveEquipment(equipment.filter(x=>x.id!==eq.id))}><X size={15}/></button>
-              </div>
-              <div style={S.hourLabel}>Hourly cost</div>
-              <NumberInput value={eq.hourlyCost} onChange={v=>updEquip(eq.id,{hourlyCost:Number(v)||0})} suffix="$/hr" />
-            </Card>
-          ))}
-          <button style={S.addChip} onClick={()=>actions.saveEquipment([...equipment,{id:uid('eq'),name:'New equipment',hourlyCost:0}])}><Plus size={13}/> Add equipment</button>
+                {isOpen && (
+                  <div style={{ padding:'0 16px 14px' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                      <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+                        <button style={S.reorderBtn} onClick={()=>moveEquip(eq.id,-1)} disabled={i===0}>^</button>
+                        <button style={S.reorderBtn} onClick={()=>moveEquip(eq.id,1)} disabled={i===equipment.length-1}>v</button>
+                      </div>
+                      <input style={{ ...S.textInputBig, flex:1, marginBottom:0 }} value={eq.name} onChange={e=>updEquip(eq.id,{name:e.target.value})} />
+                    </div>
+                    <div style={S.hourLabel}>Hourly cost</div>
+                    <NumberInput value={eq.hourlyCost} onChange={v=>updEquip(eq.id,{hourlyCost:Number(v)||0})} suffix="$/hr" />
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+          <button style={S.addChip} onClick={()=>{ const id=uid('eq'); actions.saveEquipment([...equipment,{id,name:'New equipment',hourlyCost:0}]); setExpandedEquip(prev=>({...prev,[id]:true})); }}><Plus size={13}/> Add equipment</button>
 
           <SectionLabel style={{ marginTop:20 }}>TRAILERS</SectionLabel>
-          {(trailers||[]).map((tr,i) => (
-            <Card key={tr.id}>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-                  <button style={S.reorderBtn} onClick={()=>moveTrailer(tr.id,-1)} disabled={i===0}>^</button>
-                  <button style={S.reorderBtn} onClick={()=>moveTrailer(tr.id,1)} disabled={i===(trailers||[]).length-1}>v</button>
+          {(trailers||[]).map((tr,i) => {
+            const isOpen = !!expandedTrailers[tr.id];
+            return (
+              <Card key={tr.id} style={{ padding:0 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', cursor:'pointer' }}
+                  onClick={() => toggleTrailer(tr.id)}>
+                  <div style={{ fontWeight:600, fontSize:14, color:C.ink }}>{tr.name}</div>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <button style={{ ...S.deleteBtnSmall, flexShrink:0 }} onClick={e=>{ e.stopPropagation(); actions.saveTrailers((trailers||[]).filter(x=>x.id!==tr.id)); }}><X size={15}/></button>
+                    <span style={{ color:C.inkFaint, fontSize:16, lineHeight:1, transform: isOpen ? 'rotate(180deg)' : 'none', display:'inline-block', transition:'transform 0.15s' }}>▾</span>
+                  </div>
                 </div>
-                <input style={{ ...S.textInputBig, flex:1, marginBottom:0 }} value={tr.name} onChange={e=>updTrailer(tr.id,{name:e.target.value})} />
-                <button style={S.deleteBtnSmall} onClick={()=>actions.saveTrailers((trailers||[]).filter(x=>x.id!==tr.id))}><X size={15}/></button>
-              </div>
-              <div style={S.hourLabel}>Day rate (depreciation-based)</div>
-              <NumberInput value={tr.dayRate} onChange={v=>updTrailer(tr.id,{dayRate:Number(v)||0})} suffix="$/day" />
-            </Card>
-          ))}
-          <button style={S.addChip} onClick={()=>actions.saveTrailers([...(trailers||[]),{id:uid('trailer'),name:'New Trailer',dayRate:0}])}><Plus size={13}/> Add trailer</button>
+                {isOpen && (
+                  <div style={{ padding:'0 16px 14px' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                      <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+                        <button style={S.reorderBtn} onClick={()=>moveTrailer(tr.id,-1)} disabled={i===0}>^</button>
+                        <button style={S.reorderBtn} onClick={()=>moveTrailer(tr.id,1)} disabled={i===(trailers||[]).length-1}>v</button>
+                      </div>
+                      <input style={{ ...S.textInputBig, flex:1, marginBottom:0 }} value={tr.name} onChange={e=>updTrailer(tr.id,{name:e.target.value})} />
+                    </div>
+                    <div style={S.hourLabel}>Day rate (depreciation-based)</div>
+                    <NumberInput value={tr.dayRate} onChange={v=>updTrailer(tr.id,{dayRate:Number(v)||0})} suffix="$/day" />
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+          <button style={S.addChip} onClick={()=>{ const id=uid('trailer'); actions.saveTrailers([...(trailers||[]),{id,name:'New Trailer',dayRate:0}]); setExpandedTrailers(prev=>({...prev,[id]:true})); }}><Plus size={13}/> Add trailer</button>
 
           <SectionLabel style={{ marginTop:20 }}>TRUCKS</SectionLabel>
-          {trucks.map((tr,i) => (
-            <Card key={tr.id}>
-              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <input style={{ ...S.textInputBig, flex:1, marginBottom:0 }} value={tr.name} onChange={e=>updTruck(tr.id,{name:e.target.value})} />
-                <button style={S.deleteBtnSmall} onClick={()=>actions.saveTrucks(trucks.filter(x=>x.id!==tr.id))}><X size={15}/></button>
-              </div>
-            </Card>
-          ))}
-          <button style={S.addChip} onClick={()=>actions.saveTrucks([...trucks,{id:uid('truck'),name:'New Truck'}])}><Plus size={13}/> Add truck</button>
+          {trucks.map((tr,i) => {
+            const isOpen = !!expandedTrucks[tr.id];
+            return (
+              <Card key={tr.id} style={{ padding:0 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', cursor:'pointer' }}
+                  onClick={() => toggleTruck(tr.id)}>
+                  <div style={{ fontWeight:600, fontSize:14, color:C.ink }}>{tr.name}</div>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <button style={{ ...S.deleteBtnSmall, flexShrink:0 }} onClick={e=>{ e.stopPropagation(); actions.saveTrucks(trucks.filter(x=>x.id!==tr.id)); }}><X size={15}/></button>
+                    <span style={{ color:C.inkFaint, fontSize:16, lineHeight:1, transform: isOpen ? 'rotate(180deg)' : 'none', display:'inline-block', transition:'transform 0.15s' }}>▾</span>
+                  </div>
+                </div>
+                {isOpen && (
+                  <div style={{ padding:'0 16px 14px' }}>
+                    <input style={{ ...S.textInputBig, flex:1 }} value={tr.name} onChange={e=>updTruck(tr.id,{name:e.target.value})} />
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+          <button style={S.addChip} onClick={()=>{ const id=uid('truck'); actions.saveTrucks([...trucks,{id,name:'New Truck'}]); setExpandedTrucks(prev=>({...prev,[id]:true})); }}><Plus size={13}/> Add truck</button>
 
           <SectionLabel style={{ marginTop:20 }}>MILEAGE RATE</SectionLabel>
           <Card>
@@ -152,23 +200,38 @@ export default function SettingsScreen() {
 
       {tab === 'stock' && (
         <>
-          {stockItems.map((item,i) => (
-            <Card key={item.id}>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-                  <button style={S.reorderBtn} onClick={()=>moveStock(item.id,-1)} disabled={i===0}>^</button>
-                  <button style={S.reorderBtn} onClick={()=>moveStock(item.id,1)} disabled={i===stockItems.length-1}>v</button>
+          {stockItems.map((item,i) => {
+            const isOpen = !!expandedStock[item.id];
+            return (
+              <Card key={item.id} style={{ padding:0 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', cursor:'pointer' }}
+                  onClick={() => toggleStock(item.id)}>
+                  <div style={{ fontWeight:600, fontSize:14, color:C.ink }}>{item.name}</div>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ fontSize:11, color:C.inkFaint, fontWeight:600 }}>${item.avgUnitCost}/{item.unit}</span>
+                    <button style={{ ...S.deleteBtnSmall, flexShrink:0 }} onClick={e=>{ e.stopPropagation(); actions.saveStockItems(stockItems.filter(s=>s.id!==item.id)); }}><X size={15}/></button>
+                    <span style={{ color:C.inkFaint, fontSize:16, lineHeight:1, transform: isOpen ? 'rotate(180deg)' : 'none', display:'inline-block', transition:'transform 0.15s' }}>▾</span>
+                  </div>
                 </div>
-                <input style={{ ...S.textInputBig, flex:1, marginBottom:0 }} value={item.name} onChange={e=>updStock(item.id,{name:e.target.value})} />
-                <button style={S.deleteBtnSmall} onClick={()=>actions.saveStockItems(stockItems.filter(s=>s.id!==item.id))}><X size={15}/></button>
-              </div>
-              <div style={S.settingsGrid}>
-                <div><div style={S.hourLabel}>Avg unit cost</div><NumberInput value={item.avgUnitCost} onChange={v=>updStock(item.id,{avgUnitCost:Number(v)||0})} suffix={`$/${item.unit}`} /></div>
-                <div><div style={S.hourLabel}>Unit</div><input style={{ ...S.textInput, flex:'unset', width:'100%' }} value={item.unit} onChange={e=>updStock(item.id,{unit:e.target.value})} /></div>
-              </div>
-            </Card>
-          ))}
-          <button style={S.addChip} onClick={()=>actions.saveStockItems([...stockItems,{id:uid('stock'),name:'New item',unit:'unit',avgUnitCost:0}])}><Plus size={13}/> Add stock item</button>
+                {isOpen && (
+                  <div style={{ padding:'0 16px 14px' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                      <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+                        <button style={S.reorderBtn} onClick={()=>moveStock(item.id,-1)} disabled={i===0}>^</button>
+                        <button style={S.reorderBtn} onClick={()=>moveStock(item.id,1)} disabled={i===stockItems.length-1}>v</button>
+                      </div>
+                      <input style={{ ...S.textInputBig, flex:1, marginBottom:0 }} value={item.name} onChange={e=>updStock(item.id,{name:e.target.value})} />
+                    </div>
+                    <div style={S.settingsGrid}>
+                      <div><div style={S.hourLabel}>Avg unit cost</div><NumberInput value={item.avgUnitCost} onChange={v=>updStock(item.id,{avgUnitCost:Number(v)||0})} suffix={`$/${item.unit}`} /></div>
+                      <div><div style={S.hourLabel}>Unit</div><input style={{ ...S.textInput, flex:'unset', width:'100%' }} value={item.unit} onChange={e=>updStock(item.id,{unit:e.target.value})} /></div>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+          <button style={S.addChip} onClick={()=>{ const id=uid('stock'); actions.saveStockItems([...stockItems,{id,name:'New item',unit:'unit',avgUnitCost:0}]); setExpandedStock(prev=>({...prev,[id]:true})); }}><Plus size={13}/> Add stock item</button>
         </>
       )}
 
