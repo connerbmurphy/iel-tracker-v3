@@ -32,7 +32,11 @@ export default function HistoryScreen({ onNav }) {
 
       {completed.length === 0 && <Hint>No completed jobs yet. Mark a job complete to add it to history.</Hint>}
 
-      {Object.entries(byYear).sort((a,b) => b[0].localeCompare(a[0])).map(([year, yearJobs]) => (
+      {Object.entries(byYear).sort((a,b) => {
+        if (a[0] === 'Unknown') return 1;
+        if (b[0] === 'Unknown') return -1;
+        return b[0].localeCompare(a[0]);
+      }).map(([year, yearJobs]) => (
         <div key={year}>
           <SectionLabel>{year} - {yearJobs.length} jobs</SectionLabel>
           {yearJobs.map(job => {

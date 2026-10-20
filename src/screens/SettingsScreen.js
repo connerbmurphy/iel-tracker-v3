@@ -17,7 +17,7 @@ export default function SettingsScreen() {
 
   const addJob = () => {
     if (!newJobName.trim()) return;
-    actions.addJob({ name:newJobName.trim(), status:'active', targetMargin:45, bidTotal:0, bidLaborHours:0, notes:'' });
+    actions.addJob({ name:newJobName.trim(), status:'active', targetMargin:45, bidTotal:0, bidLaborHours:0, notes:'', createdAt: new Date().toISOString() });
     setNewJobName('');
     showToast('Job added');
   };
@@ -54,9 +54,15 @@ export default function SettingsScreen() {
             </div>
           </Card>
           {[...jobs].sort((a,b) => {
-            const aTime = a.createdAt || a.completedAt || '';
-            const bTime = b.createdAt || b.completedAt || '';
-            return bTime.localeCompare(aTime);
+            // Active before complete
+            const aActive = a.status === 'active' ? 0 : 1;
+            const bActive = b.status === 'active' ? 0 : 1;
+            if (aActive !== bActive) return aActive - bActive;
+            // Within same status: newest first (by createdAt, fall back to original order)
+            const aTime = a.createdAt || '';
+            const bTime = b.createdAt || '';
+            if (aTime && bTime) return bTime.localeCompare(aTime);
+            return 0; // preserve original order when no timestamps
           }).map(job => {
             const isOpen = !!expandedJobs[job.id];
             return (
